@@ -46,3 +46,7 @@ This project scans e-commerce websites for product prices, applies credit card d
 ```bash
 git clone https://github.com/gswack/buybot.git
 cd buybot
+
+### Install Dependencies (using poetry)
+poetry install
+poetry shell
