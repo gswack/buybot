@@ -1,1 +1,1 @@
-dockerconmpose
+docker-compose up --build
