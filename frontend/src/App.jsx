@@ -3,18 +3,14 @@ import { Routes, Route, Link } from "react-router-dom";
 import SearchBar from "./SearchBar"; // adjust path if needed
 
 export default function App() {
-  
   const [darkMode, setDarkMode] = useState(() => {
-    // Check saved preference on load
     return localStorage.getItem("theme") === "dark";
   });
 
-  // Toggle handler
   const toggleDarkMode = () => {
     setDarkMode((prev) => !prev);
   };
 
-  // Apply class to <html> element
   useEffect(() => {
     const html = document.documentElement;
     if (darkMode) {
@@ -25,11 +21,21 @@ export default function App() {
       localStorage.setItem("theme", "light");
     }
   }, [darkMode]);
-  
-  // ✅ Add this function to handle search
-  const handleSearch = (query) => {
-    console.log("Searching for:", query);
-    // Later: call your backend API here
+
+  const handleSearch = async (query) => {
+    try {
+      const cardType = "visa"; // You can get this from user input
+      const response = await fetch(
+        `http://localhost:5000/api/search?query=${encodeURIComponent(query)}&cardType=${cardType}`
+      );
+
+      const data = await response.json();
+      console.log("Search results:", data);
+
+      // You can now display these results in your UI
+    } catch (error) {
+      console.error("Error fetching search results:", error);
+    }
   };
 
   return (
@@ -48,7 +54,7 @@ export default function App() {
       >
         {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
       </button>
-      
+
       {/* ✅ Add the SearchBar here */}
       <SearchBar onSearch={handleSearch} />
 
