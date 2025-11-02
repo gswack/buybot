@@ -8,6 +8,8 @@ router.get("/search", async (req, res) => {
   const query = req.query.query;  
   const cardType = req.query.cardType || "none"; // e.g., 'visa', 'mastercard'  
   
+  if (!query) return res.status(400).json({ error: "Missing query parameter" });
+
   const discountRates = {
     visa: 0.05,
     mastercard: 0.10,
@@ -16,18 +18,18 @@ router.get("/search", async (req, res) => {
 
   const discount = discountRates[cardType.toLowerCase()] || 0;
 
-  const discountedResults = resultResponse.data.products.map((product) => {
-    return {
-      ...product,
-      discountedPrice: (product.price * (1 - discount)).toFixed(2),
-      discountApplied: `${discount * 100}%`,
-    };
-  });
+  // const discountedResults = resultResponse.data.products.map((product) => {
+  //   return {
+  //     ...product,
+  //     discountedPrice: (product.price * (1 - discount)).toFixed(2),
+  //     discountApplied: `${discount * 100}%`,
+  //   };
+  // });
 
-  res.json(discountedResults);
+  // res.json(discountedResults);
 
   
-  if (!query) return res.status(400).json({ error: "Missing query parameter" });
+  // if (!query) return res.status(400).json({ error: "Missing query parameter" });
 
   try {
     // Step 1: Create a job
@@ -49,10 +51,19 @@ router.get("/search", async (req, res) => {
     const resultResponse = await axios.get(`https://api.priceapi.com/products/bulk/${jobId}`, {
       params: { token: PRICEAPI_TOKEN },
     });
+    
+    const products = resultResponse.data.products || [];
 
-    res.json(resultResponse.data);
+    const discountedResults = products.map((product) => ({
+      ...product,
+      discountedPrice: (product.price * (1 - discount)).toFixed(2),
+      discountApplied: `${(discount * 100).toFixed(0)}%`,
+    }));
+
+    res.json(discountedResults);
+    // res.json(resultResponse.data);
   } catch (error) {
-    console.error("PriceAPI error:", error.message);
+    console.error("PriceAPI error:", error.response?.data || error.message);
     res.status(500).json({ error: "Failed to fetch product data" });
   }
 });

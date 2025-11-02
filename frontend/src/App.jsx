@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Link } from "react-router-dom";
+import { mockProducts } from "./mockProducts";
+import SearchResults from "./SearchResults";
 import SearchBar from "./SearchBar"; // adjust path if needed
+
+const [results, setResults] = useState([]);
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -23,10 +27,15 @@ export default function App() {
   }, [darkMode]);
 
   const handleSearch = async (query) => {
-    try {
+    try {      
+      const filtered = mockProducts.filter((product) =>
+        product.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setResults(filtered);
+
       const cardType = "visa"; // You can get this from user input
       const response = await fetch(
-        `http://localhost:5000/api/search?query=${encodeURIComponent(query)}&cardType=${cardType}`
+        `/api/search?query=${encodeURIComponent(query)}&cardType=${cardType}`
       );
 
       const data = await response.json();
@@ -55,8 +64,8 @@ export default function App() {
         {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
       </button>
 
-      {/* ✅ Add the SearchBar here */}
       <SearchBar onSearch={handleSearch} />
+      <SearchResults results={results} />
 
       <nav className="flex gap-4 mb-6">
         <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline">
