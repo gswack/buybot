@@ -7,5 +7,6 @@ app.use(cors());
 app.use(express.json());
 app.use("/api", searchRoutes);
 
-const PORT = process.env.PORT || 5000;
+// const PORT = process.env.PORT || 5000;
+const PORT = 5e3;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
