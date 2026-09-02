@@ -1,4 +1,4 @@
-# 🧠 AI Price Comparison Platform
+# 🧠 AI Price Comparison Platform - In Progress
 
 > Find the cheapest online prices for products using AI-powered search, web scraping, and DevOps automation.
 
@@ -17,13 +17,6 @@ This project scans e-commerce websites for product prices, applies credit card d
 - 💳 Credit card discount integration
 - 🧱 CI/CD pipeline with Docker + ArgoCD
 - ☁️ Cloud deployment via Terraform on GKE
-
----
-
-## 🧠 Architecture
-
-![Architecture Diagram](docs/architecture-diagram.png)
-
 ---
 
 ## 🧰 Tech Stack
@@ -45,8 +38,4 @@ This project scans e-commerce websites for product prices, applies credit card d
 ### 1️⃣ Clone the repo
 ```bash
 git clone https://github.com/gswack/buybot.git
-cd buybot
-
-### Install Dependencies (using poetry)
-poetry install
-poetry shell
+cd b
