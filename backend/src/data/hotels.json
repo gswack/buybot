@@ -1,0 +1,43 @@
+[
+  { 
+    "id": 1, 
+    "name": "Hilton", 
+    "description": "Hilton is a hotel chain that is known for its luxurious accommodations and its commitment to customer service." ,
+    "location": "San Diego, CA",
+    "price_per_night": 120
+  },
+  { 
+    "id": 2, 
+    "name": "Embassy Suites", 
+    "description": "Embassy Suites is a hotel chain that is known for its luxurious accommodations and its commitment to customer service.",
+    "location": "Los Angeles, CA",
+    "price_per_night": 200  
+  },
+  { 
+    "id": 3, 
+    "name": "Leonardo", 
+    "description": "Leonardo is a hotel chain that is known for its luxurious accommodations and its commitment to customer service.",
+    "location": "Jerusalem, Israel",
+    "price_per_night": 300  
+  },
+  { 
+    "id": 4, 
+    "name": "Marriot", 
+    "description": "Marriot is a hotel chain that is known for its luxurious accommodations and its commitment to customer service.",
+    "location": "Paris, France",
+    "price_per_night": 400  
+  },
+  { 
+    "id": 5, 
+    "name": "Reve de la Mer", 
+    "description": "Located in Naqourah, South Lebanon, and approximately 2 hours’ drive from the capital city Beirut. Reve De La Mer hotel is highly recommended for people seeking a quiet place to relax and enjoy summer time by the pool where they can also have their favorite drink at the Bar within the pool.",
+    "location": "Naqourah, South Lebanon",
+    "price_per_night": 100, 
+    "phone": "+961 1 234 5678",
+    "email": "info@reve-de-la-mer.com",
+    "website": "https://www.reve-de-la-mer.com",
+    "rating": 4.5,
+    "reviews": 1000,
+    "images": ["https://www.reve-de-la-mer.com/images/1.jpg", "https://www.reve-de-la-mer.com/images/2.jpg", "https://www.reve-de-la-mer.com/images/3.jpg"]
+  }
+]

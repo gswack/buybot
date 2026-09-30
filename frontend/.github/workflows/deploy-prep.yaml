@@ -1,0 +1,77 @@
+name: Pipeline 2 - Frontend Deployment Preparation
+
+on:
+  workflow_run:
+    workflows:
+      - "Frontend Docker Build and Push"
+    types:
+      - completed
+
+jobs:
+  update-infra:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout infra-repo
+        uses: actions/checkout@v4
+        with:
+          repository: gswack/infra-repo
+          token: ${{ secrets.PIPELINE_TOKEN }}
+          ref: dev
+          path: infra-repo
+
+      - name: Get image tag
+        id: tag
+        run: |
+          echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+
+      - name: Update image tag in frontend-deployment.yaml
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          sed -i "s|nexus\.gswack\.com/frontend:.*|nexus.gswack.com/frontend:${TAG}|g" \
+          infra-repo/kubernetes/frontend/frontend-deployment.yaml
+
+      - name: Verify updated manifest
+        run: |
+          grep "image:" infra-repo/kubernetes/frontend/frontend-deployment.yaml
+
+      - name: Debug frontend deployment
+        run: |
+          cd infra-repo
+          grep -n "image:" kubernetes/frontend/frontend-deployment.yaml
+          git status
+          git diff -- kubernetes/frontend/frontend-deployment.yaml
+
+      - name: Commit and push changes
+        run: |
+          cd infra-repo
+          git config --global --add safe.directory "$(pwd)"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add kubernetes/frontend/frontend-deployment.yaml
+          git commit -m "Update frontend image tag to latest"
+          git push origin dev
+
+      - name: Open Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.PIPELINE_TOKEN }}
+        run: |
+          # using the GitHub CLI to create a pull request
+          gh pr create \
+            --repo gswack/infra-repo \
+            --base main \
+            --head dev \
+            --title "Deploy frontend image tag" \
+            --body "Automated PR: update frontend image tag to ${{ steps.tag.outputs.tag }}"
+
+      - name: Auto-merge Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.PIPELINE_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --repo gswack/infra-repo --head dev --json number --jq ".[0].number")
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: No open PR found for dev branch."
+            exit 1
+          fi
+          gh pr merge $PR_NUMBER --repo gswack/infra-repo --merge --admin

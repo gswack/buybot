@@ -1,0 +1,152 @@
+name: Pipeline 1 - Docker build and push
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  # TODO : Add a test job to run pytest before building and pushing the Docker image
+  test:
+    name: Run Pytest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.14]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install uv and set up automated caching + Python version
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: false
+          python-version: ${{ matrix.python-version }}
+
+      # Install project dependencies into the virtual environment
+      - name: Install dependencies
+        run: uv pip install --no-cache -r requirements.txt
+
+      # Execute pytest within the uv virtual environment
+      - name: Run test suite with Pytest
+        run: uv run pytest tests/ -vv --junitxml=test-results.xml
+
+      # Upload test results artifact for CI reporting
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: test-results.xml
+
+  # Stage 1
+  build-artifacts:
+    name: Build Application Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: |
+          mkdir -p artifact
+          cp -r src artifact/
+          cp package.json package-lock.json artifact/
+
+      - name: Upload application artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-backend-artifact
+          path: artifact/
+
+  # Stage 2
+  build-and-push:
+    name: Build and Push Docker Image
+    needs: build-artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download application artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hotel-backend-artifact
+          path: artifact
+
+      - name: Get Image Tag
+        id: image
+        run: |
+          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+        # Debugging purposes, show the nexus registry secret value (masked in logs)
+      - name: Debug registry
+        run: |
+          echo "Registry: ${NEXUS_REGISTRY}"
+        env:
+          NEXUS_REGISTRY: ${{ secrets.NEXUS_REGISTRY }}
+
+      - name: Debug username length
+        run: |
+          echo "Username length: ${#NEXUS_USERNAME}"
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+
+      - name: Check secret lengths
+        run: |
+          echo "Username length: ${#NEXUS_USERNAME}"
+          echo "Password length: ${#NEXUS_PASSWORD}"
+          echo "Registry length: ${#NEXUS_REGISTRY}"
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          NEXUS_REGISTRY: ${{ secrets.NEXUS_REGISTRY }}
+
+      - name: Test Nexus connectivity
+        run: |
+            STATUS=$(curl -ks -o /dev/null -w "%{http_code}" https://nexus.gswack.com/v2/)
+            echo "Nexus returned HTTP $STATUS"
+
+            if [ "$STATUS" != "401" ]; then
+              echo "Unexpected Nexus response"
+              exit 1
+            fi
+
+      - name: Login to Nexus Docker Registry
+        run: |
+          docker login "${NEXUS_REGISTRY}" \
+          --username "${NEXUS_USERNAME}" \
+          --password "${NEXUS_PASSWORD}"
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          NEXUS_REGISTRY: ${{ secrets.NEXUS_REGISTRY }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t "${NEXUS_REGISTRY}/backend:${{ steps.image.outputs.tag }}" .
+        env:
+          NEXUS_REGISTRY: ${{ secrets.NEXUS_REGISTRY }}
+
+      - name: Push Docker image to Nexus
+        run: docker push "${NEXUS_REGISTRY}/backend:${{ steps.image.outputs.tag }}"
+        env:
+          NEXUS_REGISTRY: ${{ secrets.NEXUS_REGISTRY }}
+
+      - name: Verify image exists
+        run: |
+          docker images | grep "${{ steps.image.outputs.tag }}"

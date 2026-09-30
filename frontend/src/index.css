@@ -1,3 +1,316 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f7f7f8;
+  color: #1a1a1a;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+h1 {
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #666;
+  margin-top: 0;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.mode-toggle button {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.mode-toggle button.active {
+  background: #1a1a1a;
+  color: white;
+  border-color: #1a1a1a;
+}
+
+.search-box {
+  margin-bottom: 16px;
+}
+
+.search-box input[type="text"] {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.image-preview {
+  display: block;
+  max-width: 200px;
+  margin-top: 12px;
+  border-radius: 6px;
+}
+
+.search-button {
+  padding: 10px 24px;
+  font-size: 15px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.search-button:disabled {
+  background: #93b4f0;
+  cursor: default;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.empty {
+  color: #666;
+}
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+table.results th,
+table.results td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ── Location badge ── */
+.location-status {
+  padding-top: 8px;
+}
+
+.location-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.location-badge.detecting {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.location-badge.denied {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+/* ── Membership selector ── */
+.memberships {
+  margin: 16px 0;
+}
+
+.memberships-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.memberships-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.membership-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  background: white;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.membership-chip input[type="checkbox"] {
+  display: none;
+}
+
+.membership-chip.active {
+  background: #1a1a1a;
+  color: white;
+  border-color: #1a1a1a;
+}
+
+.discount-badge {
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.membership-chip.active .discount-badge {
+  background: #16a34a;
+  color: white;
+}
+
+/* ── Results table ── */
+tr.has-discount {
+  background: #f0fdf4;
+}
+
+.membership-tag {
+  display: block;
+  font-size: 11px;
+  color: #16a34a;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* ── Price cell ── */
+.price-with-discount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-original {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 12px;
+}
+
+.price-discounted {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.discount-tag {
+  font-size: 11px;
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+/* ── Identified product banner ── */
+.identified-as {
+  margin: 12px 0 4px;
+  font-size: 14px;
+  color: #555;
+  background: #f0f4ff;
+  border-left: 3px solid #2563eb;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+/* ── Store direct search links ── */
+.store-links {
+  margin: 12px 0;
+}
+
+.store-links-label {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 8px 0;
+}
+
+.store-links-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.store-link-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #1a1a1a;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  flex-wrap: wrap;
+}
+
+.store-link-card:hover {
+  border-color: #1a1a1a;
+  background: #fafafa;
+}
+
+.store-link-card.has-membership {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.store-link-logo {
+  font-size: 16px;
+}
+
+.store-link-name {
+  font-weight: 600;
+}
+
+.store-link-membership-note {
+  font-size: 11px;
+  color: #16a34a;
+  font-weight: 400;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.store-link-arrow {
+  margin-left: auto;
+  color: #999;
+  font-size: 14px;
+}
