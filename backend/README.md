@@ -1,10 +1,12 @@
 # Hotel Booking Backend API
 
 ## Commands 
-1. docker run -d --name buybot-postgres -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_DB=buybot -p 5432:5432 pgvector/pgvector:pg16
-2. docker exec -it buybot-postgres psql -U postgres -d priceapp -c "CREATE EXTENSION IF NOT EXISTS vector;"
-3. source .venv/Scripts/activate
-4. uvicorn app.main:app --reload
+1. docker start buybot-postgres
+2. docker run -d --name buybot-postgres -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_DB=buybot -p 5432:5432 pgvector/pgvector:pg16
+3. docker exec -it buybot-postgres psql -U postgres -d priceapp -c "CREATE EXTENSION IF NOT EXISTS vector;"
+4. docker start buybot-postgres
+5. source .venv/Scripts/activate
+6. uvicorn app.main:app --reload
 
 02b7ebe7d93c85c1c8a07732a0bcf20df6e682d34e584274162177465793c477
 

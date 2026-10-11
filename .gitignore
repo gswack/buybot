@@ -1,3 +1,9 @@
 node_modules
 backend/node_modules
-frontend/node_modules
+frontend/node_modules.terraform/
+.terraform/
+*.tfstate
+*.tfstate.*
+backend/app/__pycache__/*
+backend/app/routes/__pycache__/*
+backend/app/scrapers/__pycache__/*

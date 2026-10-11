@@ -35,7 +35,7 @@ APIFY_RUN_SYNC_URL = f"https://api.apify.com/v2/acts/{ACTOR_ID}/run-sync-get-dat
 
 # Map 2-letter country codes to ASOS store codes and currencies
 COUNTRY_TO_STORE: dict[str, tuple[str, str]] = {
-    "il": ("COM", "ILS"),
+    "il": ("UK",  "GBP"),  # No IL storefront — UK store is closest, GBP better than USD
     "gb": ("UK",  "GBP"),
     "ie": ("UK",  "GBP"),
     "us": ("US",  "USD"),

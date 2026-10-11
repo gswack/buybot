@@ -1,26 +1,16 @@
 import asyncpg
-from pgvector.asyncpg import register_vector
 
 from app.config import settings
 
-# settings = Settings()
 _pool: asyncpg.Pool | None = None
 
 
 async def init_db_pool() -> asyncpg.Pool:
-    """Create the connection pool and register the pgvector type.
-    Call this once on app startup.
-    """
     global _pool
-
-    async def _init_connection(conn: asyncpg.Connection) -> None:
-        await register_vector(conn)
-
     _pool = await asyncpg.create_pool(
         dsn=settings.database_url,
         min_size=1,
         max_size=10,
-        init=_init_connection,
     )
     return _pool
 
@@ -38,26 +28,27 @@ def get_pool() -> asyncpg.Pool:
     return _pool
 
 
-# Run this once manually against your database before first use.
-# Requires the pgvector extension to already be installed on the Postgres server.
-SCHEMA_SQL = """
-CREATE EXTENSION IF NOT EXISTS vector;
+# ── Schema ────────────────────────────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS products (
-    id BIGSERIAL PRIMARY KEY,
-    store TEXT NOT NULL,
-    name TEXT NOT NULL,
-    url TEXT NOT NULL,
-    image_url TEXT,
-    price NUMERIC(10, 2),
-    currency TEXT DEFAULT 'GBP',
-    -- CLIP ViT-B-32 produces 512-dim embeddings
-    embedding VECTOR(512) NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+USERS_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS users (
+    id          BIGSERIAL PRIMARY KEY,
+    email       TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    age         INT,
+    -- memberships stored as a JSON array of membership IDs
+    -- e.g. ["asos_student", "jack_kuba_club"]
+    memberships JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Approximate nearest-neighbor index for fast similarity search
-CREATE INDEX IF NOT EXISTS products_embedding_idx
-    ON products USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);
 """
+
+
+async def create_tables() -> None:
+    """Create all application tables if they don't exist. Safe to call on every startup."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(USERS_SCHEMA_SQL)

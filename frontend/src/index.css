@@ -314,3 +314,525 @@ tr.has-discount {
   color: #999;
   font-size: 14px;
 }
+
+/* ── Header right ── */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sign-in-btn {
+  padding: 6px 14px;
+  border: 1px solid #1a1a1a;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sign-in-btn:hover { background: #f5f5f5; }
+
+.profile-toggle {
+  padding: 6px 14px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ── Auth modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: white;
+  border-radius: 10px;
+  padding: 28px 32px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #eee;
+}
+
+.modal-tabs button {
+  flex: 1;
+  padding: 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.modal-tabs button.active {
+  border-bottom-color: #1a1a1a;
+  color: #1a1a1a;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+}
+
+.auth-form input {
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.auth-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 0;
+}
+
+.auth-submit {
+  padding: 10px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.auth-submit:disabled { background: #999; cursor: default; }
+
+/* ── Profile panel ── */
+.profile-panel {
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #1a1a1a;
+  color: white;
+}
+
+.profile-email { font-size: 14px; font-weight: 500; }
+
+.profile-logout {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.4);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.profile-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.profile-field input {
+  width: 80px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.profile-save {
+  align-self: flex-start;
+  padding: 8px 18px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.profile-save:disabled { background: #93b4f0; cursor: default; }
+
+/* ── Size / color filters ── */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 14px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 40px;
+  padding-top: 5px;
+}
+
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-chip {
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s;
+  line-height: 1.4;
+}
+
+.filter-chip:hover { border-color: #1a1a1a; }
+
+.filter-chip.active {
+  background: #1a1a1a;
+  color: white;
+  border-color: #1a1a1a;
+}
+
+.color-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--chip-color);
+  border: 1px solid rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+
+/* ── Two-phase image search ── */
+.phase-block {
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.phase-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+.phase-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Identified item banner */
+.identified-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f0f4ff;
+  border: 1px solid #c7d5ff;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.identified-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.identified-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.identified-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666;
+  margin: 0 0 2px;
+}
+
+.identified-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.identified-reset {
+  background: none;
+  border: 1px solid #aab8e0;
+  color: #3a5bb8;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.identified-reset:hover { background: #e4eaff; }
+
+/* ── Registration membership step ── */
+.register-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  margin: 0 0 4px;
+}
+
+.register-step-hint {
+  font-size: 13px;
+  color: #555;
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.optional {
+  font-weight: 400;
+  color: #999;
+  font-size: 12px;
+}
+
+.register-memberships {
+  max-height: 260px;
+  overflow-y: auto;
+  gap: 8px !important;
+}
+
+.membership-chip-store {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.membership-chip-name {
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.membership-chip.active .membership-chip-name {
+  opacity: 1;
+}
+
+.register-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.auth-back {
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.auth-back:hover { background: #f5f5f5; }
+
+.register-actions .auth-submit {
+  flex: 1;
+}
+
+/* ── Store links filter state ── */
+.store-links-filter-note {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.store-link-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.store-link-filters {
+  font-size: 11px;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+/* ── Coupon badges ── */
+.store-coupons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.store-coupons-label {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.coupon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 4px;
+  border: 1px dashed #ccc;
+  background: #fafafa;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.coupon-badge:hover {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.coupon-badge.trusted {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.coupon-code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: 0.05em;
+}
+
+.coupon-copy {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.coupon-badge:hover .coupon-copy {
+  color: #f59e0b;
+}
+
+.coupon-badge.trusted .coupon-copy {
+  color: #16a34a;
+}
+
+/* ── Country picker ── */
+.country-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.country-picker select {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
