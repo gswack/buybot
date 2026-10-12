@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 
-const PRICEAPI_TOKEN = "REDACTED_PRICEAPI_TOKEN"; // Replace with your actual token
+const PRICEAPI_TOKEN = process.env.PRICEAPI_TOKEN; // set in backend/.env (never commit it)
 
 router.get("/search", async (req, res) => {
   const query = req.query.query;  

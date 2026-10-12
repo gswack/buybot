@@ -50,3 +50,23 @@ cd buybot
 ### Install Dependencies (using poetry)
 poetry install
 poetry shell
+
+Checks and Balances
+A. Terraform
+1. cd terraform
+2. terraform init; terraform validate
+3. terraform apply
+
+B. Test Ansible
+ssh into the ansible master VM:
+1. ssh azureuser@<master public ip>
+2. cd ansible (or cd ~/ansible)
+3. ansible-inventory -i inventory.ini --list
+4. ansible all -i inventory.ini -m ping
+
+C. Install Docker + Git on the app VMs
+ansible-playbook -i inventory.ini playbooks/install.yaml
+
+D. Run Deploy
+ansible-playbook -i inventory.ini playbooks/deploy.yaml
+

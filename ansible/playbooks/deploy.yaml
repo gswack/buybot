@@ -8,7 +8,7 @@
       git:
         repo: "{{ app_repo }}"
         dest: "{{ app_dir }}"
-        version: main
+        version: dev
         force: true
       become_user: azureuser
 
