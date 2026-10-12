@@ -466,6 +466,22 @@ resource "azurerm_linux_virtual_machine" "ansible_master" {
     destination = "/home/${var.username}"
   }
 
+  # Copy the private SSH key so the master can authenticate to the other VMs.
+  # The target VMs trust the matching public key, so the master needs this to
+  # reach them over the VNet (fixes "Permission denied (publickey)").
+  provisioner "file" {
+    source      = var.ssh_private_key_path
+    destination = "/home/${var.username}/.ssh/id_rsa"
+  }
+
+  # Lock down the key (SSH rejects keys that are group/world-readable).
+  provisioner "remote-exec" {
+    inline = [
+      "chmod 700 /home/${var.username}/.ssh",
+      "chmod 600 /home/${var.username}/.ssh/id_rsa",
+    ]
+  }
+
   # Ensure the generated inventory is written before this VM uploads it.
   depends_on = [local_file.ansible_inventory]
 }
@@ -509,17 +525,18 @@ resource "local_file" "ansible_inventory" {
   filename = "${path.module}/../ansible/inventory.ini"
   content  = <<-EOT
     [frontend]
-    public-vm ansible_host=${azurerm_public_ip.public_vm_ip.ip_address} ansible_user=${var.username}
+    public-vm ansible_host=${azurerm_network_interface.public_nic.private_ip_address} ansible_user=${var.username}
 
     [backend]
     private-vm-1 ansible_host=${azurerm_network_interface.private_nic.private_ip_address} ansible_user=${var.username}
     private-vm-2 ansible_host=${azurerm_network_interface.private_nic_2.private_ip_address} ansible_user=${var.username}
 
     [ansible_master]
-    ansible-master ansible_host=${azurerm_public_ip.ansible_master_ip.ip_address} ansible_user=${var.username}
+    ansible-master ansible_connection=local ansible_user=${var.username}
 
     [all:vars]
-    ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+    ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    ansible_ssh_private_key_file=/home/${var.username}/.ssh/id_rsa
     ansible_python_interpreter=/usr/bin/python3
   EOT
 }
