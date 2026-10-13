@@ -70,3 +70,34 @@ ansible-playbook -i inventory.ini playbooks/install.yaml
 D. Run Deploy
 ansible-playbook -i inventory.ini playbooks/deploy.yaml
 
+E. Stop VMs and resource groups:
+az vm deallocate --ids $(az vm list -g RG --query "[].id" -o tsv)
+
+F. Destroy
+terraform destroy
+
+Tests:
+A. Ansible (from ansible master VM)
+1. ansible backend -i inventory.ini -m shell -a "docker ps" --become
+2. ansible backend -i inventory.ini -m shell -a "docker logs private-app --tail 50" --become
+
+B. Listen on port 300 inside VM:
+ansible backend -i inventory.ini -m shell -a "ss -tlnp" --become
+
+C. API responds locally on the backend VM:
+ansible backend -i inventory.ini -m shell -a "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/" --become
+
+D. ansible backend -i inventory.ini -m shell -a "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/" --become
+
+E. Frontend:
+ansible frontend -i inventory.ini -m shell -a "curl -s -o /dev/null -w '%{http_code}' http://10.0.0.133:3000/" --become
+ansible frontend -i inventory.ini -m shell -a "curl -s -o /dev/null -w '%{http_code}' http://10.0.0.132:3000/" --become
+
+7. Frontend pointing at the backend:
+ansible frontend -i inventory.ini -m shell -a "docker logs public-app --tail 30" --become
+
+8. Upstream dependency reachable:
+ansible backend -i inventory.ini -m shell -a "curl -s -o /dev/null -w '%{http_code}' https://api.priceapi.com" --become
+
+9. Sanity check (from host PC)
+az network nsg rule list --nsg-name backendSecurityGroup --resource-group RG -o table

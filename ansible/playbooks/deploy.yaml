@@ -37,6 +37,9 @@
           - "{{ host_port }}:{{ container_port }}"
         env:
           PORT: "{{ container_port | string }}"
+          # Backend price-comparison API needs this; supply at runtime via
+          # --extra-vars "priceapi_token=..." or group_vars (never commit the value).
+          PRICEAPI_TOKEN: "{{ priceapi_token | default('') }}"
 
 - name: Mount shared storage on backend servers
   hosts: backend
