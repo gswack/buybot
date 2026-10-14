@@ -1,17 +1,26 @@
-FROM node:22-slim
+# FastAPI price-comparison backend (app.main:app).
+# NOTE: this replaces the old Node server.js image. The real backend the
+# frontend talks to is this Python/FastAPI app, serving /api/search/*,
+# /api/users/*, /api/classify, /api/coupons on port 8000.
+FROM python:3.11-slim
+
 WORKDIR /app
 
-# Install dependencies. server.js and routes/search.js require express, cors,
-# dotenv and axios. dotenv/axios are not yet in package.json, so install
-# explicitly to guarantee they are present in the image.
-COPY package*.json ./
-RUN npm install --omit=dev \
-    && npm install --omit=dev axios dotenv
+# System deps: libpq for asyncpg builds, plus build tooling for any wheels
+# that need compiling (kept minimal; CLIP/torch are NOT used by the live routes).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the price-comparison API (NOT src/, which is a separate hotels/Mongo app)
-COPY server.js ./server.js
-COPY routes/ ./routes/
+# Install Python dependencies first for better layer caching
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# The app listens on process.env.PORT || 3000; deploy maps 3000:3000.
-EXPOSE 3000
-CMD ["node", "server.js"]
+# Copy the FastAPI application package. main.py imports as `app.main:app`,
+# so the package directory must be named `app` at the working dir root.
+COPY app/ ./app/
+
+# FastAPI/uvicorn listens on 8000; the reverse proxy on the public VM
+# forwards /api to this port over the VNet.
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

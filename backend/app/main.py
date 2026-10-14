@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -20,9 +21,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Price Comparison API", lifespan=lifespan)
 
+# Allowed browser origins. Local dev (Vite on 5173) is always allowed; add the
+# deployed frontend origin(s) via CORS_ALLOW_ORIGINS (comma-separated), e.g.
+# "http://40.114.239.40,http://buybot.example.com". When the frontend is served
+# through the Nginx proxy as same-origin /api, CORS is not even triggered, but
+# this keeps direct/cross-origin access working too.
+_default_origins = ["http://localhost:5173", "http://localhost:3000"]
+_env_origins = [
+    o.strip()
+    for o in os.getenv("CORS_ALLOW_ORIGINS", "").split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_default_origins + _env_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

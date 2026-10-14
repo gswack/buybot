@@ -190,13 +190,14 @@ resource "azurerm_network_security_group" "nsg_backend" {
   resource_group_name = azurerm_resource_group.RG.name
 
   security_rule {
-    name                                  = "allow-ssh-from-frontend"
+    name                                  = "allow-app-from-frontend"
     priority                              = 100
     direction                             = "Inbound"
     access                                = "Allow"
     protocol                              = "Tcp"
     source_port_range                     = "*"
-    destination_port_range                = "3000"
+    # FastAPI backend listens on 8000; the frontend's Nginx proxies here.
+    destination_port_range                = "8000"
     source_application_security_group_ids = [azurerm_application_security_group.frontend_asg.id]
     destination_address_prefix = "*"
   }

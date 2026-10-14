@@ -1,8 +1,10 @@
 ---
-- name: Deploy application containers
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Pull the application code onto every app host.
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Clone/update application repository on all app servers
   hosts: frontend:backend
   become: true
-
   tasks:
     - name: Clone or update application repository
       git:
@@ -12,13 +14,49 @@
         force: true
       become_user: azureuser
 
-    - name: Stop and remove existing container (if any)
+    - name: Ensure the shared docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network }}"
+        state: present
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Backend: Postgres + FastAPI (app.main:app) on port 8000.
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Deploy backend (Postgres + FastAPI)
+  hosts: backend
+  become: true
+  tasks:
+    - name: Run Postgres container
+      docker_container:
+        name: "{{ postgres_container_name }}"
+        image: "{{ postgres_image }}"
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ docker_network }}"
+        env:
+          POSTGRES_DB: "{{ postgres_db }}"
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+        volumes:
+          - "pgdata:/var/lib/postgresql/data"
+
+    - name: Wait for Postgres to accept connections
+      community.docker.docker_container_exec:
+        container: "{{ postgres_container_name }}"
+        command: pg_isready -U {{ postgres_user }}
+      register: pg_ready
+      retries: 15
+      delay: 4
+      until: pg_ready.rc == 0
+
+    - name: Stop and remove existing backend container (if any)
       docker_container:
         name: "{{ container_name }}"
         state: absent
       ignore_errors: true
 
-    - name: Build Docker image from build context
+    - name: Build backend (FastAPI) image
       docker_image:
         name: "{{ image_name }}"
         tag: "{{ image_tag }}"
@@ -27,7 +65,52 @@
           path: "{{ build_context }}"
         force_source: true
 
-    - name: Run new container
+    - name: Run backend (FastAPI) container
+      docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image_name }}:{{ image_tag }}"
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ docker_network }}"
+        ports:
+          - "{{ host_port }}:{{ container_port }}"
+        env:
+          # Supply secrets at runtime: --extra-vars "serpapi_key=... apify_api_token=..."
+          SERPAPI_KEY: "{{ serpapi_key | default('') }}"
+          APIFY_API_TOKEN: "{{ apify_api_token | default('') }}"
+          DATABASE_URL: "{{ database_url }}"
+          TOP_K: "{{ top_k | default(10) | string }}"
+          # Allow the deployed frontend origin for any non-proxied/cross-origin calls.
+          CORS_ALLOW_ORIGINS: "{{ cors_allow_origins | default('') }}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Frontend: build the Vite app with the API base URL baked in, run on 3000.
+#    VITE_API_BASE_URL=/api means the browser calls the same origin it loaded
+#    from (the public VM), where Nginx proxies /api to the backend over the VNet.
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Deploy frontend (Vite static site)
+  hosts: frontend
+  become: true
+  tasks:
+    - name: Stop and remove existing frontend container (if any)
+      docker_container:
+        name: "{{ container_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Build frontend image (bakes in VITE_API_BASE_URL)
+      docker_image:
+        name: "{{ image_name }}"
+        tag: "{{ image_tag }}"
+        source: build
+        build:
+          path: "{{ build_context }}"
+          args:
+            VITE_API_BASE_URL: "{{ vite_api_base_url | default('/api') }}"
+        force_source: true
+
+    - name: Run frontend container
       docker_container:
         name: "{{ container_name }}"
         image: "{{ image_name }}:{{ image_tag }}"
@@ -36,15 +119,16 @@
         ports:
           - "{{ host_port }}:{{ container_port }}"
         env:
-          PORT: "{{ container_port | string }}"
-          # Backend price-comparison API needs this; supply at runtime via
-          # --extra-vars "priceapi_token=..." or group_vars (never commit the value).
-          PRICEAPI_TOKEN: "{{ priceapi_token | default('') }}"
+          # Nginx proxies /api to this backend over the VNet. Set to a backend
+          # VM's private IP: --extra-vars "backend_url=http://10.0.0.133:8000"
+          BACKEND_URL: "{{ backend_url }}"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Mount Azure Files NFS share on the backend servers (shared storage).
+# ─────────────────────────────────────────────────────────────────────────────
 - name: Mount shared storage on backend servers
   hosts: backend
   become: true
-
   tasks:
     - name: Install nfs-common (needed for Azure Files NFS mounts)
       apt:
