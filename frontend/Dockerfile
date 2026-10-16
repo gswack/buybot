@@ -2,10 +2,11 @@
 FROM node:22-slim AS build
 WORKDIR /app
 
-# API base URL is baked into the bundle at build time. Default to same-origin
-# "/api" so the browser calls the public VM, where Nginx proxies to the backend.
-# Vite only exposes vars prefixed VITE_ and only reads them during the build.
-ARG VITE_API_BASE_URL=/api
+# API base URL baked into the bundle at build time. The app code already adds
+# the "/api" prefix to every request, so this must be the ORIGIN ROOT (empty),
+# NOT "/api" — otherwise requests become /api/api/... and 404.
+# Empty => same-origin; the browser hits /api/... and Nginx proxies to backend.
+ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Install dependencies (use lockfile for reproducible builds)

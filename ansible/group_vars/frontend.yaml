@@ -8,9 +8,11 @@ container_port: 3000
 host_port: 3000
 build_context: "{{ app_dir }}/frontend"
 
-# API base URL baked into the Vite bundle. Same-origin "/api" => the browser
-# calls the public VM, and Nginx proxies to the backend.
-vite_api_base_url: "/api"
+# API base URL baked into the Vite bundle. The frontend code already prefixes
+# every call with "/api" (e.g. `${API_BASE_URL}/api/search/...`), so this must
+# be the ORIGIN ROOT (empty) — NOT "/api", or you get a double /api/api 404.
+# Empty => same-origin: browser hits /api/... on the public VM, Nginx proxies it.
+vite_api_base_url: ""
 
 # Where Nginx forwards /api. Point at a backend VM's private IP:8000.
 # Uses the first host in the [backend] inventory group by default; override
