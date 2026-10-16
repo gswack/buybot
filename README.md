@@ -69,6 +69,13 @@ ansible-playbook -i inventory.ini playbooks/install.yaml
 
 D. Run Deploy
 ansible-playbook -i inventory.ini playbooks/deploy.yaml
+or
+ansible-playbook -i inventory.ini playbooks/deploy.yaml --limit backend \
+  --extra-vars "serpapi_key=YOUR_ROTATED_SERPAPI_KEY"
+  c8b95a88c7c339956ce6f18e675771d0d1fd0cfae8b2570bbfbbc0ca43bc18cf
+  or frontend:
+ansible-playbook -i inventory.ini playbooks/deploy.yaml --limit frontend
+
 
 E. Stop VMs and resource groups:
 az vm deallocate --ids $(az vm list -g RG --query "[].id" -o tsv)

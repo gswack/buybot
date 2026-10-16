@@ -107,7 +107,11 @@
         build:
           path: "{{ build_context }}"
           args:
-            VITE_API_BASE_URL: "{{ vite_api_base_url | default('/api') }}"
+            VITE_API_BASE_URL: "{{ vite_api_base_url | default('') }}"
+          # Never reuse cached layers for the frontend: the Vite bundle bakes in
+          # VITE_API_BASE_URL at build time, and a cached `npm run build` layer
+          # would keep serving the old API base. Force a clean rebuild.
+          nocache: true
         force_source: true
 
     - name: Run frontend container
