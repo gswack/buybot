@@ -166,8 +166,16 @@ def _normalize_results(items: list[dict]) -> list[dict]:
 async def _call_serpapi(params: dict) -> dict:
     """Async GET to SerpAPI."""
     params["api_key"] = settings.serpapi_key
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(SERPAPI_BASE, params=params)
+    timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            resp = await client.get(SERPAPI_BASE, params=params)
+        except httpx.TimeoutException as exc:
+            logger.error("SerpAPI request timed out: %s", exc)
+            raise HTTPException(
+                status_code=504,
+                detail="Search timed out while contacting the search provider. Please try again.",
+            ) from exc
         if resp.status_code != 200:
             logger.error("SerpAPI GET error %s: %s", resp.status_code, resp.text)
             raise HTTPException(
@@ -226,20 +234,31 @@ async def _call_serpapi_lens(image_bytes: bytes, content_type: str, country_code
     2. Run Lens with image_id to identify the product
     Returns the raw Lens response.
     """
-    async with httpx.AsyncClient(timeout=30) as client:
+    # Google Lens lookups on SerpAPI can be slow (live Google query); give the
+    # search step a generous read timeout so valid-but-slow responses complete.
+    timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         image_id = await _upload_image_to_serpapi(client, image_bytes, content_type)
         logger.info("SerpAPI image uploaded, image_id=%s, country=%s", image_id, country_code)
 
-        search_resp = await client.get(
-            SERPAPI_BASE,
-            params={
-                "engine": "google_lens",
-                "image_id": image_id,
-                "api_key": settings.serpapi_key,
-                "hl": "en",
-                "gl": country_code.lower(),
-            },
-        )
+        try:
+            search_resp = await client.get(
+                SERPAPI_BASE,
+                params={
+                    "engine": "google_lens",
+                    "image_id": image_id,
+                    "api_key": settings.serpapi_key,
+                    "hl": "en",
+                    "gl": country_code.lower(),
+                },
+            )
+        except httpx.TimeoutException as exc:
+            logger.error("SerpAPI Lens timed out: %s", exc)
+            raise HTTPException(
+                status_code=504,
+                detail="Image lookup timed out while contacting the search provider. Please try again.",
+            ) from exc
+
         if search_resp.status_code != 200:
             logger.error("SerpAPI Lens error %s: %s", search_resp.status_code, search_resp.text)
             raise HTTPException(
