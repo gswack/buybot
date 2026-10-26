@@ -84,18 +84,33 @@ git commit -m "feat: deploy FastAPI backend + Postgres + Nginx /api proxy"
 git push origin dev
 ```
 
-### 3. Deploy from the ansible master
+### 3. Deploy from the ansible master  (PERMANENT: always pulls latest from git)
+The master runs playbooks from a git clone that it hard-syncs every time, so its
+ansible files can NEVER go stale. Do NOT scp the ansible folder anymore.
+
+First time only (bootstrap the script onto the master):
 ```bash
 ssh azureuser@<ansible_master_ip>
-cd ~/ansible
+git clone https://github.com/gswack/buybot.git ~/buybot   # if not already cloned
+```
 
+Every deploy after that (from the master):
+```bash
 # Backend: pass the ROTATED SerpAPI key (and Apify token if used)
-ansible-playbook -i inventory.ini playbooks/deploy.yaml --limit backend \
+bash ~/buybot/ansible/sync-and-deploy.sh dev backend \
   --extra-vars "serpapi_key=YOUR_ROTATED_SERPAPI_KEY apify_api_token=YOUR_APIFY_TOKEN"
 
-# Frontend (backend_url defaults to first backend private IP; override if needed)
-ansible-playbook -i inventory.ini playbooks/deploy.yaml --limit frontend
+# Frontend
+bash ~/buybot/ansible/sync-and-deploy.sh dev frontend
+
+# Everything
+bash ~/buybot/ansible/sync-and-deploy.sh dev all --extra-vars "serpapi_key=..."
 ```
+The script does: git fetch + checkout + `reset --hard origin/dev`, then runs
+`ansible-playbook` from `~/buybot/ansible`. No manual copying.
+
+IMPORTANT: `inventory.ini` is tracked in git. If `terraform apply` regenerates it
+with new IPs, commit + push it so the master's sync picks it up.
 
 ### 4. Verify (backend health, then end-to-end)
 ```bash
