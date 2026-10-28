@@ -5,8 +5,17 @@
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/"          # folder containing package.json
     schedule:
       interval: "weekly"
-      
+
+  - package-ecosystem: "terraform"
+    directory: "/infra"     # folder containing your .tf files
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
