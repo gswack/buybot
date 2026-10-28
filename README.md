@@ -108,7 +108,3 @@ ansible backend -i inventory.ini -m shell -a "curl -s -o /dev/null -w '%{http_co
 
 9. Sanity check (from host PC)
 az network nsg rule list --nsg-name backendSecurityGroup --resource-group RG -o table
-
-keys
-serpAPI key:
-c8b95a88c7c339956ce6f18e675771d0d1fd0cfae8b2570bbfbbc0ca43bc18cf
