@@ -1,0 +1,31 @@
+---
+# Backend = FastAPI price-comparison API (app.main:app), served on port 8000.
+container_name: "private-app"
+image_name: "priceapp/private-app"
+image_tag: "latest"
+container_port: 8000
+host_port: 8000
+build_context: "{{ app_dir }}/backend"
+
+# Runtime configuration for the FastAPI app (see backend/app/config.py).
+# Secrets (serpapi_key, apify_api_token) are supplied at deploy time via
+# --extra-vars and must NOT be committed. database_url points at the Postgres
+# container that runs on this backend VM (see the postgres play in deploy.yaml).
+serpapi_key: ""
+apify_api_token: ""
+
+# Postgres (runs as a sibling container on the same backend VM).
+postgres_container_name: "private-db"
+postgres_image: "postgres:16"
+postgres_db: "priceapp"
+postgres_user: "postgres"
+postgres_password: "postgres"
+postgres_port: 5432
+
+# asyncpg DSN the API uses. Points at the Postgres container by name over the
+# shared docker network defined in group_vars/all.yaml (docker_network).
+database_url: "postgresql://{{ postgres_user }}:{{ postgres_password }}@{{ postgres_container_name }}:{{ postgres_port }}/{{ postgres_db }}"
+
+# Azure Files (NFS) shared storage mount — unchanged.
+storage_account_name: "azurefilesforproject"
+file_share_name: "shared-data"

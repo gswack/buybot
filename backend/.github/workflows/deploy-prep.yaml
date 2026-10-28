@@ -1,0 +1,59 @@
+name: Pipeline 2 - Deployment Preparation
+
+on:
+  workflow_run:
+    workflows:
+      - "Pipeline 1 - Build"
+    types:
+      - completed
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout infra-repo
+        uses: actions/checkout@v4
+        with:
+          repository: gswack/infra-repo
+          token: ${{ secrets.PIPELINE_TOKEN }}
+          ref: dev
+          path: infra-repo
+
+      - name: Get image tag
+        id: tag
+        run: echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+
+      - name: Update image tag in deployment.yaml
+        run: |
+          (Get-Content infra-repo/kubernetes/volumes/k8s/backend/deployment.yaml) `
+          -replace 'image:\s*host\.docker\.internal:8082/backend:.*', 'image: host.docker.internal:8082/backend:${{ steps.tag.outputs.tag }}' `
+          | Set-Content infra-repo/kubernetes/volumes/k8s/backend/deployment.yaml
+          
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add kubernetes/volumes/k8s/backend/deployment.yaml
+          git commit -m "Update backend image tag to ${{ steps.tag.outputs.tag }}"
+          git push origin dev
+
+      - name: Open Pull Request
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: dev
+          destination_branch: main
+          pr_title: "Deploy backend ${{ steps.tag.outputs.tag }}"
+          pr_body: "Automated PR: update backend image tag to ${{ steps.tag.outputs.tag }}"
+          github_token: ${{ secrets.PIPELINE_TOKEN }}
+          # pr_repository: gswack/infra-repo
+
+      - name: Auto-merge Pull Request
+        run: |
+          PR_NUMBER=$(gh pr list --repo gswack/infra-repo --head dev --json number --jq '.[0].number')
+          gh pr merge $PR_NUMBER --repo gswack/infra-repo --merge --admin
+        env:
+          GH_TOKEN: ${{ secrets.PIPELINE_TOKEN }}
+
+          

@@ -1,0 +1,568 @@
+# Variables
+variable "username" {
+  default = "azureuser"
+}
+
+variable "size" {
+  default = "Standard_B1s"
+}
+
+variable "admin_ip" {
+  description = "Your public IP (with /32) for SSH access"
+  type        = string
+}
+
+variable "ssh_private_key_path" {
+  description = "Path to the SSH private key used to connect to the ansible master for provisioning"
+  type        = string
+  default     = "~/.ssh/id_rsa"
+}
+
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=5.0.0"
+    }
+  }
+}
+
+# Configure the Microsoft Azure Provider
+provider "azurerm" {
+  features {}
+}
+
+# Create a resource group
+resource "azurerm_resource_group" "RG" {
+  name     = "RG"
+  location = "West Europe"
+}
+
+# Create a virtual network within the resource group
+resource "azurerm_virtual_network" "main" {
+  name                = "main"
+  resource_group_name = azurerm_resource_group.RG.name
+  location            = azurerm_resource_group.RG.location
+  address_space       = ["10.0.0.0/16"]
+}
+
+# Azure Files (EFS)
+resource "azurerm_storage_account" "azure_files" {
+  name                     = "azurefilesforproject"
+  resource_group_name      = azurerm_resource_group.RG.name
+  location                 = azurerm_resource_group.RG.location
+  account_tier             = "Premium"
+  account_replication_type = "LRS"
+  account_kind             = "FileStorage"
+
+  # NFS shares require HTTPS-only to be disabled and public network access restricted
+  https_traffic_only_enabled = false
+
+  network_rules {
+    default_action             = "Deny"
+    virtual_network_subnet_ids = [azurerm_subnet.private_subnet.id]
+  }
+}
+
+resource "azurerm_storage_share" "shared_data" {
+  name                 = "shared-data"
+  storage_account_id  = azurerm_storage_account.azure_files.id
+  quota                = 100  # GB
+  enabled_protocol     = "NFS"
+}
+
+resource "azurerm_storage_share" "storage_share" {
+  name               = "storage-share"
+  storage_account_id = azurerm_storage_account.azure_files.id
+  quota              = 100
+  enabled_protocol   = "NFS"
+}
+
+# Subnets
+resource "azurerm_subnet" "public_subnet" {
+    name             = "public_subnet"
+    resource_group_name  = azurerm_resource_group.RG.name
+    virtual_network_name = azurerm_virtual_network.main.name
+    address_prefixes = ["10.0.0.0/25"]
+
+    depends_on = [azurerm_virtual_network.main]
+}
+
+resource "azurerm_subnet" "private_subnet" {
+    name                 = "private_subnet"
+    resource_group_name  = azurerm_resource_group.RG.name
+    virtual_network_name = azurerm_virtual_network.main.name
+    address_prefixes     = ["10.0.0.128/25"]
+    
+    service_endpoint {
+      service = "Microsoft.Storage"
+    } 
+
+    depends_on = [azurerm_virtual_network.main]
+}
+
+# Security Groups
+resource "azurerm_network_security_group" "nsg_frontend" {
+  name                = "frontendSecurityGroup"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  security_rule {
+    name                       = "allow-ssh-from-admin"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.admin_ip
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow-app-from-internet"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3000"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow-ssh-from-ansible-master"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_application_security_group_ids      = [azurerm_application_security_group.ansible_master_asg.id]
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_network_security_group" "nsg_ansible_master" {
+  name                = "ansibleMasterSecurityGroup"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  security_rule {
+    name                       = "allow-ssh-from-admin"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.admin_ip
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_application_security_group" "frontend_asg" {
+  name                = "frontend-asg"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+}
+
+resource "azurerm_application_security_group" "ansible_master_asg" {
+  name                = "ansible-master-asg"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+}
+
+resource "azurerm_network_interface_application_security_group_association" "frontend_asg_assoc" {
+  network_interface_id          = azurerm_network_interface.public_nic.id
+  application_security_group_id = azurerm_application_security_group.frontend_asg.id
+}
+
+resource "azurerm_network_interface_application_security_group_association" "ansible_master_asg_assoc" {
+  network_interface_id          = azurerm_network_interface.ansible_master_nic.id
+  application_security_group_id = azurerm_application_security_group.ansible_master_asg.id
+}
+
+resource "azurerm_network_security_group" "nsg_backend" {
+  name                = "backendSecurityGroup"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  security_rule {
+    name                                  = "allow-app-from-frontend"
+    priority                              = 100
+    direction                             = "Inbound"
+    access                                = "Allow"
+    protocol                              = "Tcp"
+    source_port_range                     = "*"
+    # FastAPI backend listens on 8000; the frontend's Nginx proxies here.
+    destination_port_range                = "8000"
+    source_application_security_group_ids = [azurerm_application_security_group.frontend_asg.id]
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                                       = "allow-ssh-from-ansible-master"
+    priority                                   = 110
+    direction                                  = "Inbound"
+    access                                     = "Allow"
+    protocol                                   = "Tcp"
+    source_port_range                          = "*"
+    destination_port_range                     = "22"
+    source_application_security_group_ids      = [azurerm_application_security_group.ansible_master_asg.id]
+    destination_address_prefix = "*"
+  }
+}
+
+# Subnet-level association
+resource "azurerm_network_interface_security_group_association" "public_nic_nsg" {
+  network_interface_id     = azurerm_network_interface.public_nic.id
+  network_security_group_id = azurerm_network_security_group.nsg_frontend.id
+}
+
+resource "azurerm_network_interface_security_group_association" "ansible_master_nic_nsg" {
+  network_interface_id     = azurerm_network_interface.ansible_master_nic.id
+  network_security_group_id = azurerm_network_security_group.nsg_ansible_master.id
+}
+
+resource "azurerm_network_interface_security_group_association" "private_nic_nsg" {
+  network_interface_id     = azurerm_network_interface.private_nic.id
+  network_security_group_id = azurerm_network_security_group.nsg_backend.id
+}
+
+resource "azurerm_network_interface_security_group_association" "private_nic_2_nsg" {
+  network_interface_id     = azurerm_network_interface.private_nic_2.id
+  network_security_group_id = azurerm_network_security_group.nsg_backend.id
+}
+
+# Route Table
+resource "azurerm_route_table" "main" {
+  name                = "route-table"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  route {
+    name           = "route1"
+    address_prefix = "0.0.0.0/0"
+    next_hop_type  = "Internet"
+  }
+
+  tags = {
+    Name = "rt-lh-dev-westeu"
+  }
+
+  depends_on = [azurerm_virtual_network.main]
+}
+
+resource "azurerm_subnet_route_table_association" "public" {
+  subnet_id      = azurerm_subnet.public_subnet.id
+  route_table_id = azurerm_route_table.main.id
+}
+
+# Public IP
+resource "azurerm_public_ip" "public_vm_ip" {
+  name                = "public-vm-ip"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_public_ip" "ansible_master_ip" {
+  name                = "ansible-master-ip"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+# Admin IP
+resource "azurerm_network_interface" "ansible_master_nic" {
+  name                = "ansible-master-nic"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.public_subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id         = azurerm_public_ip.ansible_master_ip.id
+  }
+}
+
+resource "azurerm_network_interface" "public_nic" {
+  name                = "public_nic"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.public_subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.public_vm_ip.id
+  }
+}
+
+resource "azurerm_network_interface" "private_nic" {
+  name                = "private_nic"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.private_subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_network_interface" "private_nic_2" {
+  name                = "private_nic_2"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.private_subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+# VMs
+# First public node
+resource "azurerm_linux_virtual_machine" "public_node" {
+  name                  = "public-vm"
+  resource_group_name = azurerm_resource_group.RG.name
+  location              = azurerm_resource_group.RG.location
+  size                = var.size
+  admin_username      = var.username
+  network_interface_ids = [
+    azurerm_network_interface.public_nic.id,
+  ]
+
+  admin_ssh_key {
+    username   = var.username
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+}
+
+# First private node
+resource "azurerm_linux_virtual_machine" "private_node" {
+  name                  = "private-vm"
+  resource_group_name = azurerm_resource_group.RG.name
+  location              = azurerm_resource_group.RG.location
+  size                = var.size
+  admin_username      = var.username
+  network_interface_ids = [
+    azurerm_network_interface.private_nic.id,
+  ]
+  
+   admin_ssh_key {
+    username   = var.username
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+}
+
+# Second private node
+resource "azurerm_linux_virtual_machine" "private_node2" {
+  name                  = "private-vm2"
+  resource_group_name = azurerm_resource_group.RG.name
+  location              = azurerm_resource_group.RG.location
+  size                = var.size
+  admin_username      = var.username
+  network_interface_ids = [
+    azurerm_network_interface.private_nic_2.id,
+  ]
+
+   admin_ssh_key {
+    username   = var.username
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+}
+
+# Ansible Master
+resource "azurerm_linux_virtual_machine" "ansible_master" {
+  name                  = "ansible-master"
+  resource_group_name = azurerm_resource_group.RG.name
+  location              = azurerm_resource_group.RG.location
+  size                = var.size
+  admin_username      = var.username
+  network_interface_ids = [azurerm_network_interface.ansible_master_nic.id]
+
+  admin_ssh_key {
+    username   = var.username
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+
+  custom_data = base64encode(<<-EOF
+    #cloud-config
+    packages:
+      - python3
+      - python3-pip
+    runcmd:
+      - pip3 install ansible docker
+  EOF
+  )
+
+  # Connect over SSH using the master's public IP so files can be uploaded.
+  connection {
+    type        = "ssh"
+    host        = azurerm_public_ip.ansible_master_ip.ip_address
+    user        = var.username
+    private_key = file(var.ssh_private_key_path)
+  }
+
+  # Copy the entire local ansible/ folder (inventory.ini, playbooks/, group_vars/)
+  # into the master's home directory as /home/azureuser/ansible.
+  provisioner "file" {
+    source      = "${path.module}/../ansible"
+    destination = "/home/${var.username}"
+  }
+
+  # Copy the private SSH key so the master can authenticate to the other VMs.
+  # The target VMs trust the matching public key, so the master needs this to
+  # reach them over the VNet (fixes "Permission denied (publickey)").
+  provisioner "file" {
+    source      = var.ssh_private_key_path
+    destination = "/home/${var.username}/.ssh/id_rsa"
+  }
+
+  # Lock down the key (SSH rejects keys that are group/world-readable).
+  provisioner "remote-exec" {
+    inline = [
+      "chmod 700 /home/${var.username}/.ssh",
+      "chmod 600 /home/${var.username}/.ssh/id_rsa",
+    ]
+  }
+
+  # Ensure the generated inventory is written before this VM uploads it.
+  depends_on = [local_file.ansible_inventory]
+}
+
+## Outputs:
+output "storage_account_name" {
+  value = azurerm_storage_account.azure_files.name
+}
+
+output "file_share_name" {
+  value = azurerm_storage_share.shared_data.name
+}
+
+# Frontend
+output "public_vm_ip" {
+  value = azurerm_public_ip.public_vm_ip.ip_address
+}
+
+# Frontend private IP
+output "public_vm_private_ip" {
+  value = azurerm_network_interface.public_nic.private_ip_address
+}
+
+# Backend1
+output "private_vm_1_ip" {
+  value = azurerm_network_interface.private_nic.private_ip_address
+}
+
+# Backend2
+output "private_vm_2_ip" {
+  value = azurerm_network_interface.private_nic_2.private_ip_address
+}
+
+# Master public IP
+output "ansible_master_ip" {
+  value = azurerm_public_ip.ansible_master_ip.ip_address
+}
+
+# Copy IP addresses to ansible inventory
+resource "local_file" "ansible_inventory" {
+  filename = "${path.module}/../ansible/inventory.ini"
+  content  = <<-EOT
+    [frontend]
+    public-vm ansible_host=${azurerm_network_interface.public_nic.private_ip_address} ansible_user=${var.username}
+
+    [backend]
+    private-vm-1 ansible_host=${azurerm_network_interface.private_nic.private_ip_address} ansible_user=${var.username}
+    private-vm-2 ansible_host=${azurerm_network_interface.private_nic_2.private_ip_address} ansible_user=${var.username}
+
+    [ansible_master]
+    ansible-master ansible_connection=local ansible_user=${var.username}
+
+    [all:vars]
+    ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    ansible_ssh_private_key_file=/home/${var.username}/.ssh/id_rsa
+    ansible_python_interpreter=/usr/bin/python3
+  EOT
+}
+
+resource "azurerm_public_ip" "nat_ip" {
+  name                = "nat-gateway-ip"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_nat_gateway" "private_nat" {
+  name                = "private-nat"
+  location            = azurerm_resource_group.RG.location
+  resource_group_name = azurerm_resource_group.RG.name
+  sku_name            = "Standard"
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "nat_assoc" {
+  nat_gateway_id       = azurerm_nat_gateway.private_nat.id
+  public_ip_address_id = azurerm_public_ip.nat_ip.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "private_nat_assoc" {
+  subnet_id      = azurerm_subnet.private_subnet.id
+  nat_gateway_id = azurerm_nat_gateway.private_nat.id
+}
