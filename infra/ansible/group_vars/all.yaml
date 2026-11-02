@@ -1,0 +1,10 @@
+---
+# Global variables shared by all hosts
+
+app_repo: "https://github.com/gswack/buybot.git"
+app_dir: "/home/azureuser/buybot"
+
+docker_network: "buybot-net"
+
+# EFS/Azure Files mount point (shared storage for backend containers)
+shared_storage_mount: "/mnt/efs"

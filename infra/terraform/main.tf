@@ -447,16 +447,8 @@ resource "azurerm_linux_virtual_machine" "ansible_master" {
     packages:
       - python3
       - python3-pip
-      - ansible
-      - git
     runcmd:
-      # Clone the repo (dev branch) so the master always has playbooks/ + ansible/
-      # on boot, independent of fragile SSH-timed provisioners. -b dev checks out
-      # the deployable branch directly (a default clone would land on main).
-      - git clone -b dev https://github.com/gswack/buybot.git /home/${var.username}/buybot
-      - chown -R ${var.username}:${var.username} /home/${var.username}/buybot
-      # Docker SDK for Ansible's docker_* modules.
-      - pip3 install docker
+      - pip3 install ansible docker
   EOF
   )
 

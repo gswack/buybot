@@ -12,19 +12,23 @@ server {
     # Static SPA: fall back to index.html for client-side routes.
     location / {
         try_files $uri $uri/ /index.html;
-    }
+    }     proxy_set_header X-Real-IP $remote_addr;
+sddd
 
-    # Proxy API calls to the backend. The frontend calls same-origin "/api",
-    # so the browser never talks to the private backend directly.
-    location /api/ {
-        proxy_pass ${BACKEND_URL};
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
 
-        # Image uploads can be large; allow a generous body size.
-        client_max_body_size 25m;
-        proxy_read_timeout 120s;
+dd        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+
+        # Image uploads can be large (phone photos 5-15MB); allow plenty and
+        # stream the body straight through instead of buffering/rejecting it.
+        client_max_body_size 50m;
+        client_body_buffer_size 1m;
+        proxy_request_buffering off;
+
+        # Lens lookups can be slow upstream.
+        proxy_connect_timeout 15s;
+        proxy_read_timeout 150s;
+        proxy_send_timeout 150s;
     }
 }
