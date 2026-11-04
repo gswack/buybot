@@ -873,7 +873,7 @@ export default function App() {
                 <span>Upload a photo — we'll identify the item and show available sizes and colors</span>
               </div>
               <div className="search-box">
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} />
                 {imagePreviewUrl && <img src={imagePreviewUrl} alt="preview" className="image-preview" />}
               </div>
               <button

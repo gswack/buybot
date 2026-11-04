@@ -21,7 +21,7 @@ import re
 
 import httpx
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from PIL import Image
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import settings
 from app.memberships import MEMBERSHIP_PROGRAMS, apply_discounts
@@ -48,45 +48,42 @@ router = APIRouter()
 SERPAPI_BASE = "https://serpapi.com/search"
 MAX_UPLOAD_BYTES = 480_000  # SerpAPI limit is 500KB; keep a small buffer
 
+# Lets Pillow open iPhone HEIC/HEIF photos (needs `pillow-heif` in requirements.txt)
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
+
+_MIME = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+
 
 def _compress_image(image_bytes: bytes) -> tuple[bytes, str]:
-    """
-    If image_bytes exceeds MAX_UPLOAD_BYTES, resize and re-compress it
-    until it fits. Returns (compressed_bytes, content_type).
-    Always outputs JPEG for consistent compression.
-    """
-    if len(image_bytes) <= MAX_UPLOAD_BYTES:
-        return image_bytes, "image/jpeg"
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        fmt = img.format
+        img.load()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported or unreadable image. Please upload a JPG, PNG or WebP.",
+        ) from exc
 
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    quality = 85
+    # Already a supported format and small enough: send as-is, correctly labeled
+    if fmt in _MIME and len(image_bytes) <= MAX_UPLOAD_BYTES:
+        return image_bytes, _MIME[fmt]
 
-    while quality >= 30:
+    # Otherwise convert/shrink to JPEG
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img.thumbnail((2000, 2000))
+    for quality in (85, 75, 65, 55, 45):
         buf = io.BytesIO()
-        # Scale down if still too large after compression
-        scale = min(1.0, (MAX_UPLOAD_BYTES / len(image_bytes)) ** 0.5)
-        if scale < 1.0:
-            new_w = max(1, int(img.width * scale))
-            new_h = max(1, int(img.height * scale))
-            img = img.resize((new_w, new_h), Image.LANCZOS)
-
         img.save(buf, format="JPEG", quality=quality, optimize=True)
-        compressed = buf.getvalue()
-        if len(compressed) <= MAX_UPLOAD_BYTES:
-            logger.info(
-                "Image compressed: %d KB → %d KB (quality=%d)",
-                len(image_bytes) // 1024,
-                len(compressed) // 1024,
-                quality,
-            )
-            return compressed, "image/jpeg"
-        quality -= 10
-
-    # Last resort: aggressive resize to thumbnail
-    img = img.resize((800, 800), Image.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=50, optimize=True)
+        if buf.tell() <= MAX_UPLOAD_BYTES:
+            return buf.getvalue(), "image/jpeg"
+        img.thumbnail((int(img.width * 0.8), int(img.height * 0.8)))
     return buf.getvalue(), "image/jpeg"
+    
 
 CURRENCY_SYMBOLS = {"$": "USD", "£": "GBP", "€": "EUR", "₪": "ILS"}
 
