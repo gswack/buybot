@@ -10,7 +10,7 @@
       git:
         repo: "{{ app_repo }}"
         dest: "{{ app_dir }}"
-        version: dev
+        version: add-security-pipeline
         force: true
       become_user: azureuser
 
