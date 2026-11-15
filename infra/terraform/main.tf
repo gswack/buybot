@@ -591,8 +591,8 @@ resource "cloudflare_record" "app" {          # named cloudflare_dns_record in p
   zone_id = var.cloudflare_zone_id
   name    = "app"
   type    = "A"
-  value   = azurerm_public_ip.public_vm_ip.ip_address   # use `content` instead of `value` in v5
-  proxied = false
+  content = azurerm_public_ip.public_vm_ip.ip_address   # use `content` instead of `value` in v5
+  proxied = true
 }
 
 variable "cloudflare_zone_id" {
