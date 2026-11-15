@@ -142,6 +142,18 @@ resource "azurerm_network_security_group" "nsg_frontend" {
     source_application_security_group_ids      = [azurerm_application_security_group.ansible_master_asg.id]
     destination_address_prefix = "*"
   }
+
+  security_rule {
+  name                       = "allow-http-https-from-internet"
+  priority                   = 130          # must be unused in this NSG
+  direction                  = "Inbound"
+  access                     = "Allow"
+  protocol                   = "Tcp"
+  source_port_range          = "*"
+  destination_port_ranges    = ["80", "443"]
+  source_address_prefix      = "*"
+  destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_network_security_group" "nsg_ansible_master" {
@@ -565,4 +577,12 @@ resource "azurerm_nat_gateway_public_ip_association" "nat_assoc" {
 resource "azurerm_subnet_nat_gateway_association" "private_nat_assoc" {
   subnet_id      = azurerm_subnet.private_subnet.id
   nat_gateway_id = azurerm_nat_gateway.private_nat.id
+}
+
+resource "cloudflare_record" "app" {          # named cloudflare_dns_record in provider v5
+  zone_id = var.cloudflare_zone_id
+  name    = "app"
+  type    = "A"
+  value   = azurerm_public_ip.public.ip_address   # use `content` instead of `value` in v5
+  proxied = true
 }

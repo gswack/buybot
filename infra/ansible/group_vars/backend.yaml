@@ -25,6 +25,7 @@ postgres_port: 5432
 # asyncpg DSN the API uses. Points at the Postgres container by name over the
 # shared docker network defined in group_vars/all.yaml (docker_network).
 database_url: "postgresql://{{ postgres_user }}:{{ postgres_password }}@{{ postgres_container_name }}:{{ postgres_port }}/{{ postgres_db }}"
+cors_allow_origins: "https://app.gswack.com"
 
 # Azure Files (NFS) shared storage mount — unchanged.
 storage_account_name: "azurefilesforproject"
