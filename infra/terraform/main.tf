@@ -24,7 +24,15 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "=5.0.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
+}
+
+provider "cloudflare" {
+  # token is read from the CLOUDFLARE_API_TOKEN environment variable
 }
 
 # Configure the Microsoft Azure Provider
